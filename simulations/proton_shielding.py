@@ -10,7 +10,7 @@ def run_sim():
     mm = g4_units.mm
     MeV = g4_units.MeV
 
-    n_protons = 10_000
+    n_protons = 1000
     energy_MeV = 100
     shield_mm = 2
     gap_mm = 5
@@ -18,14 +18,14 @@ def run_sim():
 
     sim = gate.Simulation()
     sim.number_of_threads = 1
-    sim.random_seed = 42
-    sim.visu = False
+    sim.random_seed = 1
+    sim.visu = True
 
     output_dir = Path(__file__).resolve().parents[1] / "output"
     output_dir.mkdir(exist_ok=True)
     sim.output_dir = output_dir
 
-    # Vacuum world
+    # World (vacuum)
     sim.world.size = [200 * mm] * 3
     sim.world.material = "G4_Galactic"
 
@@ -80,15 +80,15 @@ def run_sim():
     sim.run()
     print(stats)
 
-    # Total deposited energy, including secondary particles
+    # Total E_Dep (including secondary particles)
     image = scorer.edep.get_data()
     total_MeV = float(np.sum(itk.array_from_image(image)) / MeV)
 
-    # G4_Si density: 2.33 g/cm³
+    # G4_Si density (2.33 g/cm3)
     chip_volume_cm3 = float(np.prod(np.array(chip.size) / mm)) / 1000
     chip_mass_kg = 2.33 * chip_volume_cm3 / 1000
 
-    # Convert MeV to joules; dose = deposited energy / mass
+    # Convert MeV to joules; dose = E_Dep/mass
     dose_Gy = total_MeV * 1.602176634e-13 / chip_mass_kg
 
     print(f"\nProton energy: {energy_MeV} MeV")
