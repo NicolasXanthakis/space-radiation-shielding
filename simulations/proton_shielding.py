@@ -92,14 +92,18 @@ def run_sim():
     dose_Gy = total_MeV * 1.602176634e-13 / chip_mass_kg
 
     print(f"\nProton energy: {energy_MeV} MeV")
+
     print(f"Aluminium thickness: {shield_mm} mm")
     print(f"Chip mass: {chip_mass_kg * 1000:.4f} g")
     print(f"Deposited energy: {total_MeV:.3f} MeV")
-    print(f"Mean deposited energy/source proton: "
+    print(f"Mean deposited energy/source proton: " 
           f"{total_MeV / n_protons:.5f} MeV")
-    print(f"Mean chip dose for {n_protons} source protons: "
+    
+    print(f"Mean chip dose for {n_protons} source protons: " 
           f"{dose_Gy:.6e} Gy")
+    
     print(f"Dose/source proton: {dose_Gy / n_protons:.6e} Gy")
+
 
 
 if __name__ == "__main__":
