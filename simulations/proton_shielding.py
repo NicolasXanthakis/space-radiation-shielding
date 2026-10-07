@@ -6,20 +6,20 @@ import opengate as gate
 from opengate.utility import g4_units
 
 
-def run_sim():
+def run_sim(shield_mm=2, n_protons=10_000, seed=1):
     mm = g4_units.mm
     MeV = g4_units.MeV
 
-    n_protons = 1000
     energy_MeV = 100
-    shield_mm = 2
     gap_mm = 5
     chip_thickness_mm = 0.5
 
+    shield_back_z_mm = 1 
+
     sim = gate.Simulation()
     sim.number_of_threads = 1
-    sim.random_seed = 1
-    sim.visu = True
+    sim.random_seed = seed
+    sim.visu = False
 
     output_dir = Path(__file__).resolve().parents[1] / "output"
     output_dir.mkdir(exist_ok=True)
@@ -30,18 +30,25 @@ def run_sim():
     sim.world.material = "G4_Galactic"
 
     # Aluminium shield centred at Z = 0
-    shield = sim.add_volume("Box", "shield")
-    shield.size = [50 * mm, 50 * mm, shield_mm * mm]
-    shield.material = "G4_Al"
-    shield.color = [0.7, 0.7, 0.7, 0.5]
+    # Keep the downstream shield surface fixed; grow toward the source
+    shield = None
 
-    # Silicon chip behind the shield, with a 5 mm surface gap
+    if shield_mm > 0:
+        shield = sim.add_volume("Box", "shield")
+        shield.size = [50 * mm, 50 * mm, shield_mm * mm]
+        shield.translation = [
+            0, 0, (shield_back_z_mm - shield_mm / 2) * mm
+        ]
+        shield.material = "G4_Al"
+        shield.color = [0.7, 0.7, 0.7, 0.5]
+
+    # Chip position stays fixed for every shield thickness
     chip = sim.add_volume("Box", "chip")
     chip.size = [10 * mm, 10 * mm, chip_thickness_mm * mm]
     chip.translation = [
         0,
         0,
-        (shield_mm / 2 + gap_mm + chip_thickness_mm / 2) * mm,
+        (shield_back_z_mm + gap_mm + chip_thickness_mm / 2) * mm,
     ]
     chip.material = "G4_Si"
     chip.color = [0.2, 0.7, 0.2, 1.0]
@@ -62,7 +69,11 @@ def run_sim():
     sim.physics_manager.physics_list_name = "FTFP_BERT"
 
     # Explicit secondary production cuts
-    for volume in (shield, chip):
+    volumes = [chip]
+    if shield is not None:
+        volumes.append(shield)
+
+    for volume in volumes:
         sim.physics_manager.set_production_cut(
             volume.name, "all", 0.01 * mm
         )
@@ -77,7 +88,7 @@ def run_sim():
     stats = sim.add_actor("SimulationStatisticsActor", "stats")
     stats.track_types_flag = True
 
-    sim.run()
+    sim.run(start_new_process=True)
     print(stats)
 
     # Total E_Dep (including secondary particles)
@@ -104,7 +115,23 @@ def run_sim():
     
     print(f"Dose/source proton: {dose_Gy / n_protons:.6e} Gy")
 
-
+    return dose_Gy / n_protons
 
 if __name__ == "__main__":
-    run_sim()
+
+    # thicknesses_mm = [0, 2, 5, 10, 15, 20, 25, 30, 35, 40]
+    thicknesses_mm = [34, 34.5, 35, 35.5, 36, 36.5, 37, 37.5, 38, 38.5, 39, 39.5, 40]
+    
+    doses_per_proton = []
+
+    for i, thickness in enumerate(thicknesses_mm):
+        dose = run_sim(
+            shield_mm=thickness,
+            n_protons=10_000,
+            seed=1 + i,
+        )
+        doses_per_proton.append(dose)
+
+    print("\nAl thickness (mm) | Chip dose/source proton (Gy)")
+    for thickness, dose in zip(thicknesses_mm, doses_per_proton):
+        print(f"{thickness:17.1f} | {dose:.6e}")
