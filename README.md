@@ -40,5 +40,8 @@ electronic failures.
 
 ### First model
 
+For the simulated 100 MeV proton beam, thicker PVA hydrogel reduces the average tissue dose, but shifts the Bragg peak toward the tissue surface.
+- From 0 to 60 mm shielding, the peak moves from 76.5 to 14.5 mm inside tissue, while its height remains roughly unchanged.
+- At around 80 mm and above, recorded tissue dose becomes very small, consistent with primary protons stopping in the shield.
 
 
