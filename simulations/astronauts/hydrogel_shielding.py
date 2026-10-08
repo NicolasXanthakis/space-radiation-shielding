@@ -6,7 +6,7 @@ import opengate as gate
 from opengate.utility import g4_units
 
 
-def run_sim(shield_mm=0, n_protons=10_000, seed=1):
+def run_sim(shield_mm=0, n_protons=100, seed=1):
     mm = g4_units.mm
     MeV = g4_units.MeV
 
@@ -25,7 +25,7 @@ def run_sim(shield_mm=0, n_protons=10_000, seed=1):
     sim = gate.Simulation()
     sim.number_of_threads = 1
     sim.random_seed = seed
-    sim.visu = False
+    sim.visu = True
 
 
     # Hydrogel
@@ -55,8 +55,7 @@ def run_sim(shield_mm=0, n_protons=10_000, seed=1):
         + pva_fraction * (O / pva_repeat_molar_mass)
     )
 
-    # Estimated mixture density assuming additive constituent volumes.
-    # These are assumed constituent densities, not measured gel data.
+    # Estimated mixture density 
     water_density_g_cm3 = 1.00
     pva_density_g_cm3 = 1.27
 
@@ -80,11 +79,11 @@ def run_sim(shield_mm=0, n_protons=10_000, seed=1):
     output_dir.mkdir(parents=True, exist_ok=True)
     sim.output_dir = output_dir
 
-    # Large enough for the shield, source and tissue.
+    # World
     sim.world.size = [400 * mm] * 3
     sim.world.material = "G4_Galactic"
 
-    # Keep the downstream shield surface fixed.
+    # Shield surface is fixed
     shield = None
     if shield_mm > 0:
         shield = sim.add_volume("Box", "shield")
@@ -97,7 +96,7 @@ def run_sim(shield_mm=0, n_protons=10_000, seed=1):
         shield.material = shield_material
         shield.color = [0.2, 0.6, 1.0, 0.5]
 
-    # Water phantom representing tissue.
+    # Tissue -> water
     tissue_front_z_mm = shield_back_z_mm + gap_mm
 
     tissue = sim.add_volume("Box", "tissue")
@@ -114,7 +113,7 @@ def run_sim(shield_mm=0, n_protons=10_000, seed=1):
     tissue.material = "G4_WATER"
     tissue.color = [0.9, 0.5, 0.5, 0.5]
 
-    # Fixed source upstream of every tested shield.
+    # Fixed source upstream of every tested shield
     source_z_mm = -150
     if shield_back_z_mm - shield_mm <= source_z_mm:
         raise ValueError("Shield reaches or extends beyond the source.")
@@ -141,8 +140,8 @@ def run_sim(shield_mm=0, n_protons=10_000, seed=1):
             volume.name, "all", 0.01 * mm
         )
 
-    # One voxel across X/Y; 1 mm slices along Z.
-    # Each slice dose is averaged over its full 50 × 50 mm area.
+    # One voxel across X/Y; 1mm slices along Z
+    # Each slice dose: averaged over 50mm x 50mm area
     scorer = sim.add_actor("DoseActor", "tissue_edep")
     scorer.attached_to = tissue.name
     scorer.size = [1, 1, n_slices]
@@ -159,14 +158,14 @@ def run_sim(shield_mm=0, n_protons=10_000, seed=1):
     sim.run(start_new_process=True)
     print(stats)
 
-    # ITK arrays use Z, Y, X ordering.
+    # ITK arrays use Z, Y, X ordering
     image = scorer.edep.get_data()
     edep_array = np.asarray(
         itk.array_from_image(image), dtype=np.float64
     )
     slice_edep_MeV = edep_array.sum(axis=(1, 2)) / MeV
 
-    # G4_WATER density: 1 g/cm³.
+    # G4_WATER density: 1 g/cm3
     density_g_cm3 = 1.0
     slice_volume_cm3 = (
         tissue_width_mm**2 * slice_thickness_mm / 1000
@@ -189,7 +188,7 @@ def run_sim(shield_mm=0, n_protons=10_000, seed=1):
         / n_protons
     )
 
-    # Depth measured from the tissue entrance, at slice centres.
+    # Depth measured from the tissue entrance, at slice centres
     depths_mm = (
         np.arange(n_slices) + 0.5
     ) * slice_thickness_mm
@@ -229,13 +228,13 @@ def run_sim(shield_mm=0, n_protons=10_000, seed=1):
 
 
 if __name__ == "__main__":
-    thicknesses_mm = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+    thicknesses_mm = [10, 50, 100]
     doses_per_proton = []
 
     for i, thickness in enumerate(thicknesses_mm):
         dose = run_sim(
             shield_mm=thickness,
-            n_protons=10_000,
+            n_protons=100,
             seed=1 + i,
         )
         doses_per_proton.append(dose)
