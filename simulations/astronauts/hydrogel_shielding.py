@@ -25,7 +25,7 @@ def run_sim(shield_mm=0, n_protons=100, seed=1):
     sim = gate.Simulation()
     sim.number_of_threads = 1
     sim.random_seed = seed
-    sim.visu = True
+    sim.visu = False
 
 
     # Hydrogel
@@ -71,11 +71,8 @@ def run_sim(shield_mm=0, n_protons=100, seed=1):
         hydrogel_density_g_cm3 * g4_units.g_cm3,
     )
 
-    output_dir = (
-        Path(__file__).resolve().parents[1]
-        / "output"
-        / "hydrogel_tissue"
-    )
+    # Save results
+    output_dir = Path(__file__).resolve().parent / "results" / "hydrogel_tissue"
     output_dir.mkdir(parents=True, exist_ok=True)
     sim.output_dir = output_dir
 
